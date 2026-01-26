@@ -14,13 +14,13 @@ pub type FactoryDatum {
 }
 
 pub type FactoryRedeemer {
-  CreateProduct { product_id: ByteArray }
+  CreateProduct { product_policy_id: ByteArray ,product_id: ByteArray }
 }
 
 validator factory(owner: VerificationKeyHash, factory_marker_policy: PolicyId) {
   mint(redeemer: FactoryRedeemer, policy_id: PolicyId, tx: Transaction) {
     let Transaction { inputs, extra_signatories, mint, .. } = tx
-    let CreateProduct { product_id } = redeemer
+    let CreateProduct { product_id,.. } = redeemer
 
     let product_minted = only_minted_token(mint, policy_id, product_id, 1)
 
@@ -41,7 +41,7 @@ validator factory(owner: VerificationKeyHash, factory_marker_policy: PolicyId) {
   ) {
     let Transaction { inputs, outputs, extra_signatories, mint, .. } = tx
 
-    let CreateProduct { product_id } = redeemer
+    let CreateProduct { product_policy_id,product_id } = redeemer
 
     expect Some(own_input) = find_input(inputs, oref)
 
@@ -59,11 +59,11 @@ has_nft_strict(
         |> outputs_with(factory_marker_policy, "FACTORY_MARKER")
 
     // Was a product minted?
-    let product_minted = only_minted_token(mint, policy_id, product_id, 1)
-    let [product_script_out] = outputs_with(policy_id, product_id)
+    let product_minted = only_minted_token(mint, product_policy_id, product_id, 1)
+    expect [product_script_out] = outputs_with(outputs, product_policy_id, product_id)
 
     let datum_updated_correctly = {
-        address_script_hash(product_script_out.address) + +
+        address_script_hash(product_script_out.address) ++
         own_input.output.datum
       } == continuing_output.datum
 
