@@ -1,15 +1,18 @@
 import {
-  scriptHash,  outputReference,  builtinByteString,
+  builtinByteString,
   deserializeDatum,
   hexToString,
   KoiosProvider,
   mConStr0,
   MeshTxBuilder,
   MeshWallet,
+  outputReference,
   resolvePaymentKeyHash,
   resolveScriptHash,
-  serializePlutusScript,UTxO,
+  scriptHash,
+  serializePlutusScript,
   stringToHex,
+  UTxO
 } from '@meshsdk/core';
 
 import { applyParamsToScript } from '@meshsdk/core-csl';
@@ -36,7 +39,7 @@ function loadWalletFromFile(path: string): MeshWallet {
     networkId: NETWORK_ID,
     fetcher: provider,
     submitter: provider,
-    key: { type: 'mnemonic', words: mnemonic },
+    key: { type: 'mnemonic', words: mnemonic }
   });
 }
 
@@ -54,7 +57,7 @@ function getScriptAddress(compiled: string) {
   const { address } = serializePlutusScript(
     { code: compiled, version: 'V3' },
     undefined,
-    NETWORK_ID,
+    NETWORK_ID
   );
   return address;
 }
@@ -63,7 +66,7 @@ function getScriptAddress(compiled: string) {
 // Factory scripts
 // ------------------------------------------------------------
 
-function getFactoryMarkerAndScriptDetails(ownerPkh: string,seedUtxo: UTxO) {
+function getFactoryMarkerAndScriptDetails(ownerPkh: string, seedUtxo: UTxO) {
 
 
   const factoryMarkerScript = applyParamsToScript(
@@ -71,7 +74,7 @@ function getFactoryMarkerAndScriptDetails(ownerPkh: string,seedUtxo: UTxO) {
     [builtinByteString(ownerPkh),
       outputReference(seedUtxo.input.txHash!, seedUtxo.input.outputIndex!)
     ],
-    'JSON',
+    'JSON'
   );
 
   const factoryScript = applyParamsToScript(
@@ -79,35 +82,36 @@ function getFactoryMarkerAndScriptDetails(ownerPkh: string,seedUtxo: UTxO) {
     [builtinByteString(ownerPkh),
       scriptHash(resolveScriptHash(factoryMarkerScript, 'V3'))
     ],
-    'JSON',
+    'JSON'
   );
   return {
     factory: {
       script: factoryScript,
       scriptHash: resolveScriptHash(factoryScript, 'V3'),
-      address: getScriptAddress(factoryScript),
+      address: getScriptAddress(factoryScript)
     },
     factoryMarker: {
       script: factoryMarkerScript,
-      policyId: resolveScriptHash(factoryMarkerScript, 'V3'),
-    },
+      policyId: resolveScriptHash(factoryMarkerScript, 'V3')
+    }
   };
 }
-function getFactoryScriptDetails(ownerPkh: string,markerPolicyId: string) {
+
+function getFactoryScriptDetails(ownerPkh: string, markerPolicyId: string) {
 
   const factoryScript = applyParamsToScript(
     getValidator('factory.'),
     [builtinByteString(ownerPkh),
       scriptHash(markerPolicyId)
     ],
-    'JSON',
+    'JSON'
   );
   return {
     factory: {
       script: factoryScript,
       scriptHash: resolveScriptHash(factoryScript, 'V3'),
-      address: getScriptAddress(factoryScript),
-    },
+      address: getScriptAddress(factoryScript)
+    }
   };
 }
 
@@ -117,23 +121,24 @@ function getFactoryScriptDetails(ownerPkh: string,markerPolicyId: string) {
 
 function getProductScriptDetails(
   ownerPkh: string,
-  productId: string,
-) {
-  const factory = getFactoryScriptDetails(ownerPkh);
+  markerPolicyId: string,
+  productId: string) {
+  const factory = getFactoryScriptDetails(ownerPkh, markerPolicyId);
 
   const script = applyParamsToScript(
     getValidator('product'),
     [
       builtinByteString(ownerPkh),
-      builtinByteString(factory.factoryMarker.policyId), // _factory_id : PolicyId
-      builtinByteString(stringToHex(productId)),
+      scriptHash(markerPolicyId),
+      builtinByteString(stringToHex(productId))
     ],
-    'JSON',
+    'JSON'
   );
 
   return {
     script,
-    address: getScriptAddress(script),
+    policyId: resolveScriptHash(script, 'V3'),
+    address: getScriptAddress(script)
   };
 }
 
@@ -158,7 +163,7 @@ export async function createFactory(walletFile: string) {
   const tx = new MeshTxBuilder({
     fetcher: provider,
     submitter: provider,
-    evaluator: provider,
+    evaluator: provider
   }).setNetwork(NETWORK);
 
   await tx
@@ -166,14 +171,14 @@ export async function createFactory(walletFile: string) {
       seedUtxo.input.txHash,
       seedUtxo.input.outputIndex,
       seedUtxo.output.amount,
-      seedUtxo.output.address,
+      seedUtxo.output.address
     )
 
     // Mint FACTORY_MARKER
     .mintPlutusScriptV3()
     .mint('1', factory.factoryMarker.policyId, FACTORY_MARKER_NAME_HEX)
     .mintingScript(factory.factoryMarker.script)
-    .mintRedeemerValue("")
+    .mintRedeemerValue('')
 
     // Lock marker at factory script
     .txOut(
@@ -182,9 +187,9 @@ export async function createFactory(walletFile: string) {
         {
           unit:
             factory.factoryMarker.policyId + FACTORY_MARKER_NAME_HEX,
-          quantity: '1',
-        },
-      ],
+          quantity: '1'
+        }
+      ]
     )
     .txOutInlineDatumValue(
       mConStr0(([[]]))
@@ -196,7 +201,7 @@ export async function createFactory(walletFile: string) {
       collateral[0].input.txHash,
       collateral[0].input.outputIndex,
       collateral[0].output.amount,
-      collateral[0].output.address,
+      collateral[0].output.address
     )
     .changeAddress(changeAddr)
     .selectUtxosFrom(utxos)
@@ -219,8 +224,9 @@ export async function createFactory(walletFile: string) {
 
 export async function createProduct(
   walletFile: string,
+  markerPolicyId: string,
   productId: string,
-  tag: string,
+  tag: string
 ) {
   const wallet = loadWalletFromFile(walletFile);
   const provider = new KoiosProvider(NETWORK);
@@ -228,10 +234,11 @@ export async function createProduct(
   const changeAddr = await wallet.getChangeAddress();
   const ownerPkh = resolvePaymentKeyHash(changeAddr);
 
-  const factory = getFactoryScriptDetails(ownerPkh);
-  const product = getProductScriptDetails(ownerPkh, productId);
+  const factory = getFactoryScriptDetails(ownerPkh, markerPolicyId);
+  const product = getProductScriptDetails(ownerPkh, markerPolicyId, productId);
 
-  const utxos = await provider.fetchAddressUTxOs(changeAddr);
+  const factoryUtxo = (await provider.fetchAddressUTxOs(factory.factory.address))[0];
+  const walletUtxos = await provider.fetchAddressUTxOs(changeAddr);
   const collateral = (await wallet.getCollateral())[0];
 
   const productDatum = mConStr0([stringToHex(tag)]);
@@ -239,49 +246,56 @@ export async function createProduct(
   const tx = new MeshTxBuilder({
     fetcher: provider,
     submitter: provider,
-    evaluator: provider,
+    evaluator: provider
   }).setNetwork(NETWORK);
 
   await tx
     // Spend factory UTxO (marker inside)
     .spendingPlutusScriptV3()
     .txIn(
-      utxos[0].input.txHash,
-      utxos[0].input.outputIndex,
-      utxos[0].output.amount,
-      factory.factory.address,
+      factoryUtxo.input.txHash,
+      factoryUtxo.input.outputIndex,
+      factoryUtxo.output.amount,
+      factory.factory.address
     )
     .txInInlineDatumPresent()
     .txInRedeemerValue(
       mConStr0([
-        factory.factoryMarker.policyId,
-        stringToHex(productId),
-      ]),
-      'JSON',
+        product.policyId,
+        stringToHex(productId)
+      ])
     )
     .txInScript(factory.factory.script)
 
     // Mint product NFT
     .mintPlutusScriptV3()
-    .mint('1', factory.factory.scriptHash, stringToHex(productId))
-    .mintingScript(factory.factory.script)
-    .mintRedeemerValue(
-      mConStr0([
-        factory.factoryMarker.policyId,
-        stringToHex(productId),
-      ]),
-    )
+    .mint('1', product.policyId, stringToHex(productId))
+    .mintingScript(product.script)
+    .mintRedeemerValue('')
 
+    .txOut(
+      factory.factory.address,
+      [
+        {
+          unit:
+            markerPolicyId + FACTORY_MARKER_NAME_HEX,
+          quantity: '1'
+        }
+      ]
+    )
+    .txOutInlineDatumValue(
+      mConStr0(([[product.policyId]]))
+    )
     // Product UTxO
     .txOut(
       product.address,
       [
         {
           unit:
-            factory.factory.scriptHash + stringToHex(productId),
-          quantity: '1',
-        },
-      ],
+            product.policyId + stringToHex(productId),
+          quantity: '1'
+        }
+      ]
     )
     .txOutInlineDatumValue(productDatum)
 
@@ -290,10 +304,10 @@ export async function createProduct(
       collateral.input.txHash,
       collateral.input.outputIndex,
       collateral.output.amount,
-      collateral.output.address,
+      collateral.output.address
     )
     .changeAddress(changeAddr)
-    .selectUtxosFrom(utxos)
+    .selectUtxosFrom(walletUtxos)
     .complete();
 
   const signed = await wallet.signTx(tx.txHex);
@@ -311,63 +325,149 @@ export async function createProduct(
 // ------------------------------------------------------------
 // getProducts (derived from owner)
 // ------------------------------------------------------------
-export async function getProducts(ownerPkh: string) {
-  const factory = getFactoryScriptDetails(ownerPkh);
 
-  const productPolicyId = factory.factory.scriptHash;
-
-  const url =
-    `https://preprod.koios.rest/api/v1/policy_asset_list` +
-    `?_asset_policy=${productPolicyId}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      accept: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Koios error: ${response.statusText}`);
-  }
-
-  const assets = await response.json();
-
-  const products = assets.map((asset: any) => ({
-    productId: hexToString(asset.asset_name), // asset name → product id
-    policyId: productPolicyId,
-    fingerprint: asset.fingerprint,
-  }));
-
-  console.log('Products fetched:', products);
-  return products;
-}
-
-
-export async function getTag(
-  ownerPkh: string,
-  productId: string,
+export async function getProducts(
+  walletFile: string,
+  markerPolicyId: string
 ) {
-  const provider = new KoiosProvider(NETWORK);
-  const product = getProductScriptDetails(ownerPkh, productId);
-
-  const utxos = await provider.fetchAddressUTxOs(product.address);
-  if (!utxos.length || !utxos[0].output.plutusData) {
-    throw new Error('Product datum not found');
-  }
-
-  const datum = deserializeDatum(utxos[0].output.plutusData);
-  return hexToString(datum.fields[0].bytes);
-}
-
-export async function getFactory(walletFile: string,markerPolicyId: string) {
   const wallet = loadWalletFromFile(walletFile);
   const provider = new KoiosProvider(NETWORK);
 
   const changeAddr = await wallet.getChangeAddress();
   const ownerPkh = resolvePaymentKeyHash(changeAddr);
-  return getFactoryScriptDetails(ownerPkh, markerPolicyId);
+
+
+  const factory = getFactoryScriptDetails(ownerPkh, markerPolicyId);
+  const factoryAddr = factory.factory.address;
+
+  // 1. Fetch factory UTxOs
+  const utxos = await provider.fetchAddressUTxOs(factoryAddr);
+  if (!utxos.length) {
+    throw new Error('Factory not created (no UTxOs at factory address)');
+  }
+
+  // 2. Find factory state UTxO (must have inline datum)
+  const registryUtxo = utxos.find(u => u.output.plutusData);
+  if (!registryUtxo) {
+    throw new Error('Factory state UTxO not found');
+  }
+
+  // 3. Deserialize FactoryDatum
+  const deserialized = deserializeDatum(
+    registryUtxo.output.plutusData!
+  );
+
+  // FactoryDatum = Constr 0 [ List<PolicyId> ]
+  const productsList = deserialized.fields[0].list;
+
+  console.log('Factory product policy IDs:', productsList);
+
+  const allProducts: any[] = [];
+
+  // 4. Query Koios per product policy
+  for (const p of productsList) {
+    const productPolicyId = p.bytes;
+
+    const url =
+      `https://preprod.koios.rest/api/v1/policy_asset_list` +
+      `?_asset_policy=${productPolicyId}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { accept: 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Koios error: ${response.statusText}`);
+    }
+
+    const assets = await response.json();
+    const products = assets.map((asset: any) => ({
+      productId: hexToString(asset.asset_name),
+      policyId: productPolicyId,
+      fingerprint: asset.fingerprint
+    }));
+
+    allProducts.push(...products);
+  }
+
+  console.log('Products fetched:', allProducts);
+  return allProducts;
 }
+
+
+export async function getTag(
+  walletFile: string,
+  markerPolicyId: string,
+  productId: string
+) {
+  const wallet = loadWalletFromFile(walletFile);
+  const provider = new KoiosProvider(NETWORK);
+
+  const changeAddr = await wallet.getChangeAddress();
+  const ownerPkh = resolvePaymentKeyHash(changeAddr);
+
+
+  // 1. Derive product script directly
+  const product = getProductScriptDetails(
+    ownerPkh,
+    markerPolicyId,
+    productId
+  );
+
+  const utxos = await provider.fetchAddressUTxOs(product.address);
+  if (!utxos.length) {
+    throw new Error('Product UTxO not found');
+  }
+
+  const stateUtxo = utxos.find(u => u.output.plutusData);
+  if (!stateUtxo) {
+    throw new Error('Product datum not found');
+  }
+
+  const datum = deserializeDatum(stateUtxo.output.plutusData!);
+
+  // ProductDatum = Constr 0 [ tag ]
+  const tag = hexToString(datum.fields[0].bytes);
+
+  console.log('--- Product details ---');
+  console.log('Product ID:', productId);
+  console.log('Product policy:', product.policyId);
+  console.log('Product address:', product.address);
+  console.log('Tag:', tag);
+}
+
+
+export async function getFactory(
+  walletFile: string,
+  markerPolicyId: string
+) {
+  const wallet = loadWalletFromFile(walletFile);
+  const provider = new KoiosProvider(NETWORK);
+
+  const changeAddr = await wallet.getChangeAddress();
+  const ownerPkh = resolvePaymentKeyHash(changeAddr);
+
+  const details = await getFactoryScriptDetails(
+    ownerPkh,
+    markerPolicyId
+  );
+
+  const { address, scriptHash } = details.factory;
+
+  const utxos = await provider.fetchAddressUTxOs(address);
+  const factoryExists = utxos.length > 0;
+
+  console.log('--- Factory status ---');
+  console.log('Owner PKH:', ownerPkh);
+  console.log('Factory marker policy:', markerPolicyId);
+  console.log('Factory script hash:', scriptHash);
+  console.log('Factory address:', address);
+  console.log('Factory created:', factoryExists);
+
+
+}
+
 
 // ------------------------------------------------------------
 // CLI
@@ -388,32 +488,32 @@ if (import.meta.main) {
     }
 
     case 'create-product': {
-      if (args.length !== 3) {
-        console.log('Usage: create-product <wallet.json> <product_id> <tag>');
+      if (args.length !== 4) {
+        console.log('Usage: create-product <wallet.json> <marker_policy_id> <product_id> <tag>');
         Deno.exit(1);
       }
-      const [wallet, productId, tag] = args;
-      await createProduct(wallet, productId, tag);
+      const [walletFile, markerPolicyId, productId, tag] = args;
+      await createProduct(walletFile, markerPolicyId, productId, tag);
       break;
     }
 
     case 'get-products': {
-      if (args.length !== 1) {
-        console.log('Usage: get-products <owner_pkh>');
+      if (args.length !== 2) {
+        console.log('Usage: get-products <wallet.json> <marker_policy_id>');
         Deno.exit(1);
       }
-      const [ownerPkh] = args;
-      await getProducts(ownerPkh);
+      const [walletFile, markerPolicyId] = args;
+      await getProducts(walletFile, markerPolicyId);
       break;
     }
 
     case 'get-tag': {
-      if (args.length !== 2) {
-        console.log('Usage: get-tag <owner_pkh> <product_id>');
+      if (args.length !== 3) {
+        console.log('Usage: get-tag <wallet.json> <marker_policy_id> <product_id>');
         Deno.exit(1);
       }
-      const [ownerPkh, productId] = args;
-      console.log(await getTag(ownerPkh, productId));
+      const [walletFile, markerPolicyId, productId] = args;
+      await getTag(walletFile, markerPolicyId, productId);
       break;
     }
 
@@ -422,19 +522,23 @@ if (import.meta.main) {
         console.log('Usage: get-factory <wallet.json> <marker_policy_id>');
         Deno.exit(1);
       }
-      const [ownerPkh,markerPolicyId] = args;
-      console.log(await getFactory(ownerPkh,markerPolicyId));
+      const [ownerPkh, markerPolicyId] = args;
+      await getFactory(ownerPkh, markerPolicyId);
       break;
     }
 
     default:
       console.log(`
 Usage:
-  create-factory <wallet.json> 
-  create-product <wallet.json> <product_id> <tag>
-  get-products <owner_pkh>
-  get-tag <owner_pkh> <product_id>
-  get-factory <owner_pkh>
+  create-factory <wallet.json>
+
+  create-product <wallet.json> <marker_policy_id> <product_id> <tag>
+
+  get-products <wallet.json> <marker_policy_id>
+
+  get-tag <wallet.json> <marker_policy_id> <product_id>
+
+  get-factory <wallet.json> <marker_policy_id>
 `);
   }
 }
