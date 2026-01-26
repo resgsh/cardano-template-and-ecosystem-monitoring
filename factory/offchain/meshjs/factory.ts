@@ -65,19 +65,30 @@ function getValidator(name: string) {
 // ------------------------------------------------------------
 
 function getFactoryScriptDetails(ownerPkh: string) {
-    const script = applyParamsToScript(
-        getValidator("factory"),
+    const factoryScript = applyParamsToScript(
+        getValidator("factory."),
+        [builtinByteString(ownerPkh)],
+        "JSON",
+    );
+    const factoryMarkerScript = applyParamsToScript(
+        getValidator("factory_marker"),
         [builtinByteString(ownerPkh)],
         "JSON",
     );
 
     return {
-        script,
-        policyId: resolveScriptHash(script, "V3"),
+        factory: {
+            script: factoryScript,
+            scriptHash: resolveScriptHash(factoryScript, "V3"),
+        },
+        factoryMarker: {
+            script: factoryMarkerScript,
+            scriptHash: resolveScriptHash(factoryMarkerScript, "V3"),
+        },
     };
-}
 
-function getProductScriptDetails(ownerPkh: string, productId: string) {
+
+    function getProductScriptDetails(ownerPkh: string, productId: string) {
     const factory = getFactoryScriptDetails(ownerPkh);
 
     const script = applyParamsToScript(
