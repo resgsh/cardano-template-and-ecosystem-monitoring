@@ -19,8 +19,6 @@ const factory_script_hash = mock_script_hash(1)
 
 const factory_script_addr = mock_script_address(1, None)
 
-const product_script_hash = mock_script_hash(2)
-
 const product_script_addr = mock_script_address(2, None)
 
 const factory_marker_policy = mock_policy_id(0)
@@ -38,7 +36,7 @@ const marker_input =
     output: Output {
       address: factory_script_addr,
       value: from_asset(factory_marker_policy, "FACTORY_MARKER", 1),
-      datum: InlineDatum([]),
+      datum: InlineDatum(FactoryDatum {products:[]}),
       reference_script: None,
     },
   }
@@ -95,7 +93,7 @@ test factory_create_product_wrong_quantity() {
 }
 
 test factory_spend_valid() {
-  let new_datum = InlineDatum(FactoryDatum { products: [product_script_hash] })
+  let new_datum = FactoryDatum { products: [product_policy] }
 
   let tx =
     mocktail_tx()
@@ -117,7 +115,7 @@ test factory_spend_valid() {
 }
 
 test factory_spend_without_mint_fails() {
-    let new_datum = InlineDatum(FactoryDatum { products: [product_script_hash] })
+    let new_datum = FactoryDatum { products: [product_policy] }
     
   let tx =
     mocktail_tx()

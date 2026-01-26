@@ -9,7 +9,7 @@ use cocktail/vodka_mints.{only_minted_token, token_minted}
 use cocktail/vodka_outputs.{outputs_at, outputs_with}
 
 pub type FactoryDatum {
-  products: List<ScriptHash>,
+  products: List<PolicyId>,
 }
 
 pub type FactoryRedeemer {
@@ -19,8 +19,8 @@ pub type FactoryRedeemer {
 validator factory(owner: VerificationKeyHash, factory_marker_policy: PolicyId) {
   mint(redeemer: FactoryRedeemer, policy_id: PolicyId, tx: Transaction) {
     let Transaction { inputs, extra_signatories, mint, .. } = tx
-    let CreateProduct { product_id, .. } = redeemer
-
+    let CreateProduct { product_policy_id, product_id } = redeemer
+    expect product_policy_id = policy_id
     let product_minted = only_minted_token(mint, policy_id, product_id, 1)
 
     let factory_marker_spent =
