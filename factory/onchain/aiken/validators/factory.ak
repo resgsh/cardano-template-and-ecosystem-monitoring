@@ -1,82 +1,73 @@
 use aiken/crypto.{VerificationKeyHash}
-use cardano/assets.{PolicyId}
-use cardano/transaction.{OutputReference, Transaction}
-use cardano/value.{Value}
+use cardano/assets.{PolicyId, has_nft_strict,Value}
+use cardano/transaction.{OutputReference, Transaction,find_input}
+use cocktail/vodka_address.{address_script_hash}
 use cocktail/vodka_extra_signatories.{key_signed}
-use cocktail/vodka_mints.{token_minted}
+use cocktail/vodka_inputs.{inputs_with}
+use cocktail/vodka_mints.{only_minted_token, token_minted}
+use cocktail/vodka_outputs.{outputs_at, outputs_with}
+use aiken/crypto.{ScriptHash}
+use aiken/collection/list
 
 pub type FactoryDatum {
   products: List<ScriptHash>,
 }
 
 pub type FactoryRedeemer {
-  CreateProduct { product_policy: PolicyId, product_name: ByteArray }
+  CreateProduct { product_id: ByteArray }
 }
 
 validator factory(owner: VerificationKeyHash, factory_marker_policy: PolicyId) {
   mint(redeemer: FactoryRedeemer, policy_id: PolicyId, tx: Transaction) {
-    let CreateProduct { product_policy, product_name } = redeemer
+    let Transaction { inputs, extra_signatories, mint, .. } = tx
+    let CreateProduct { product_id } = redeemer
 
-    let owner_signed = key_signed(tx.extra_signatories, owner)
+    let product_minted = only_minted_token(mint, policy_id, product_id, 1)
 
-    let factory_spent =
-      tx.inputs
-        |> List.any(
-            fn(i) {
-              Value.has(i.value, factory_marker_policy, FACTORY_MARKER_NAME, 1)
-            },
-          )
+    let factory_marker_spent =
+      (
+        inputs_with(inputs, factory_marker_policy, "FACTORY_MARKER")
+          |> list.length
+      ) == 1
 
-    let product_minted = token_minted(tx.mint, product_policy, product_name, 1)
-
-    owner_signed && factory_spent && product_minted
+    key_signed(extra_signatories, owner) && factory_marker_spent && product_minted
   }
 
   spend(
     datum: FactoryDatum,
     redeemer: FactoryRedeemer,
-    _utxo: OutputReference,
+    oref: OutputReference,
     tx: Transaction,
   ) {
-    let CreateProduct { product_policy, product_name } = redeemer
+    let Transaction { inputs, outputs, extra_signatories, mint, .. } = tx
+
+    let CreateProduct { product_id } = redeemer
+
+    expect Some(own_input) = find_input(inputs, oref)
 
     // Marker token continuity
-    let input_has_marker =
-      tx.inputs
-        |> List.any(
-            fn(i) {
-              Value.has(i.value, factory_marker_policy, "FACTORY_MARKER", 1)
-            },
-          )
-    expect Some(own_input) = find_input(inputs, spent_output_ref)
-    let Output { value: own_input_value, address: script_address, .. } =
-      own_input.output
+    expect
+has_nft_strict(
+        own_input.output.value,
+        factory_marker_policy,
+        "FACTORY_MARKER",
+      )
 
-    let output_has_marker =
-      tx.outputs
-        |> List.any(
-            fn(o) {
-              Value.has(o.value, factory_marker_policy, "FACTORY_MARKER", 1)
-            },
-          )
+    expect [continuing_output] =
+      outputs
+        |> outputs_at(own_input.output.address)
+        |> outputs_with(factory_marker_policy, "FACTORY_MARKER")
 
     // Was a product minted?
-    let product_minted = Value.has(tx.mint, product_policy, product_name, 1)
+    let product_minted = only_minted_token(mint, policy_id, product_id, 1)
+    let [product_script_out] = outputs_with(policy_id, product_id)
 
-    let expected_products = datum.products + +
-    [ProductRef { product_policy, product_name }]
+    let datum_updated_correctly = {
+        address_script_hash(product_script_out.address) + +
+        own_input.output.datum
+      } == continuing_output.datum
 
-    let datum_updated_correctly =
-      if product_minted {
-        tx.outputs
-          |> List.any(
-              fn(o) { o.datum == FactoryDatum { products: expected_products } },
-            )
-      } else {
-        true
-      }
-
-    input_has_marker && output_has_marker && datum_updated_correctly
+    key_signed(extra_signatories, owner) && datum_updated_correctly
   }
 
   else(_) {

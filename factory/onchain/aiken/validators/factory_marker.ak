@@ -1,11 +1,11 @@
 use aiken/crypto.{VerificationKeyHash}
 use cardano/address.{from_script}
-use cardano/assets.{PolicyId}
+use cardano/assets.{PolicyId,Value}
 use cardano/transaction.{OutputReference, Transaction}
-use cardano/value.{Value}
 use cocktail/vodka_extra_signatories.{key_signed}
 use cocktail/vodka_mints.{token_minted}
 use cocktail/vodka_outputs.{outputs_with}
+use aiken/crypto.{ScriptHash}
 
 validator factory_marker(
   owner: VerificationKeyHash,
