@@ -297,3 +297,8 @@ This project is intended as a reference implementation and educational example.
 It has not been audited and should not be used with real funds without proper review and testing.
 
 ---
+
+
+Updated commands
+
+deno run -A factory.ts get-factory wallet_0.json
