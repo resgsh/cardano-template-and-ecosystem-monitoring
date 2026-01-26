@@ -1,5 +1,3 @@
-use aiken/crypto.{ScriptHash}
-use cardano/address.{Address}
 use cardano/assets.{PolicyId}
 
 pub type FactoryDatum {

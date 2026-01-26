@@ -8,9 +8,8 @@ use mocktail.{
 use mocktail/virgin_address.{mock_script_address}
 use mocktail/virgin_key_hash.{mock_policy_id, mock_pub_key_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
-use types.{ProductDatum, FactoryDatum}
-use factory
 use product
+use types.{FactoryDatum, ProductDatum}
 
 const owner_pkh = mock_pub_key_hash(0)
 

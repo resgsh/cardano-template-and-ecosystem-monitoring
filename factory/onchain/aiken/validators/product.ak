@@ -1,16 +1,12 @@
 use aiken/collection/list
 use aiken/crypto.{VerificationKeyHash}
 use cardano/assets.{PolicyId}
-use cardano/transaction.{
-  InlineDatum, OutputReference, Transaction,
-  find_input,
-}
+use cardano/transaction.{InlineDatum, OutputReference, Transaction}
 use cocktail/vodka_address.{address_script_hash}
 use cocktail/vodka_extra_signatories.{key_signed}
 use cocktail/vodka_inputs.{inputs_with}
 use cocktail/vodka_mints.{only_minted_token}
-use cocktail/vodka_outputs.{outputs_at, outputs_with}
-use factory.{CreateProduct, FactoryRedeemer}
+use cocktail/vodka_outputs.{outputs_with}
 use types.{ProductDatum}
 
 validator product(
