@@ -1,7 +1,7 @@
 use aiken/collection/list
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{from_script}
-use cardano/assets.{PolicyId, Value}
+use cardano/assets.{PolicyId}
 use cardano/transaction.{OutputReference, Transaction}
 use cocktail/vodka_extra_signatories.{key_signed}
 use cocktail/vodka_mints.{token_minted}
@@ -13,7 +13,7 @@ validator factory_marker(
   factory_script_hash: ScriptHash,
 ) {
   mint(_redeemer: Data, policy_id: PolicyId, tx: Transaction) {
-    let Transaction { inputs, extra_signatories, mint, .. } = tx
+    let Transaction { inputs, extra_signatories, .. } = tx
     let one_shot_spent =
       list.any(inputs, fn(input) { input.output_reference == utxo_ref })
 

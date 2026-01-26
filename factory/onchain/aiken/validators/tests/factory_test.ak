@@ -1,21 +1,18 @@
 use cardano/assets.{from_asset}
 use cardano/transaction.{InlineDatum, Input, Output}
-use factory.{CreateProduct, FactoryDatum, FactoryRedeemer}
+use factory.{CreateProduct, FactoryDatum}
 use mocktail.{
-  add_input, add_reference_input, complete, invalid_before, mint, mocktail_tx,
+  add_input, complete, mint, mocktail_tx,
   required_signer_hash, tx_out, tx_out_inline_datum,
 }
 use mocktail/virgin_address.{mock_script_address}
-use mocktail/virgin_key_hash.{
-  mock_policy_id, mock_pub_key_hash, mock_script_hash,
-}
+use mocktail/virgin_key_hash.{mock_policy_id, mock_pub_key_hash}
 use mocktail/virgin_output_reference.{mock_utxo_ref}
+use product.{ProductDatum}
 
 const owner_pkh = mock_pub_key_hash(0)
 
 const attacker = mock_pub_key_hash(1)
-
-const factory_script_hash = mock_script_hash(1)
 
 const factory_script_addr = mock_script_address(1, None)
 
@@ -36,7 +33,7 @@ const marker_input =
     output: Output {
       address: factory_script_addr,
       value: from_asset(factory_marker_policy, "FACTORY_MARKER", 1),
-      datum: InlineDatum(FactoryDatum {products:[]}),
+      datum: InlineDatum(FactoryDatum { products: [] }),
       reference_script: None,
     },
   }
@@ -46,6 +43,12 @@ test factory_create_product_valid() {
     mocktail_tx()
       |> required_signer_hash(True, owner_pkh)
       |> mint(True, 1, product_policy, product_id)
+      |> tx_out(
+          True,
+          product_script_addr,
+          from_asset(product_policy, product_id, 1),
+        )
+      |> tx_out_inline_datum(True, ProductDatum { tag: "BACKROADS_BIO_KIT_V1" })
       |> complete()
       |> add_input(True, marker_input)
 
@@ -63,6 +66,12 @@ test factory_create_product_wrong_signer() {
     mocktail_tx()
       |> required_signer_hash(True, attacker)
       |> mint(True, 1, product_policy, product_id)
+      |> tx_out(
+          True,
+          product_script_addr,
+          from_asset(product_policy, product_id, 1),
+        )
+      |> tx_out_inline_datum(True, ProductDatum { tag: "BACKROADS_BIO_KIT_V1" })
       |> complete()
       |> add_input(True, marker_input)
 
@@ -80,6 +89,12 @@ test factory_create_product_wrong_quantity() {
     mocktail_tx()
       |> required_signer_hash(True, owner_pkh)
       |> mint(True, 2, product_policy, product_id)
+      |> tx_out(
+          True,
+          product_script_addr,
+          from_asset(product_policy, product_id, 1),
+        )
+      |> tx_out_inline_datum(True, ProductDatum { tag: "BACKROADS_BIO_KIT_V1" })
       |> complete()
       |> add_input(True, marker_input)
 
@@ -115,8 +130,7 @@ test factory_spend_valid() {
 }
 
 test factory_spend_without_mint_fails() {
-    let new_datum = FactoryDatum { products: [product_policy] }
-    
+  let new_datum = FactoryDatum { products: [product_policy] }
   let tx =
     mocktail_tx()
       |> required_signer_hash(True, owner_pkh)
