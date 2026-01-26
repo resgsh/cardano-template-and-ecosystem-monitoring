@@ -1,5 +1,5 @@
 import {
-  builtinByteString,
+  scriptHash,  outputReference,  builtinByteString,
   deserializeDatum,
   hexToString,
   KoiosProvider,
@@ -8,7 +8,7 @@ import {
   MeshWallet,
   resolvePaymentKeyHash,
   resolveScriptHash,
-  serializePlutusScript,
+  serializePlutusScript,UTxO,
   stringToHex,
 } from '@meshsdk/core';
 
@@ -22,7 +22,7 @@ import blueprint from '../../onchain/aiken/plutus.json' with { type: 'json' };
 
 const NETWORK = 'preprod';
 const NETWORK_ID = 0;
-const FACTORY_MARKER_NAME = stringToHex('FACTORY_MARKER');
+const FACTORY_MARKER_NAME_HEX = stringToHex('FACTORY_MARKER');
 
 // ------------------------------------------------------------
 // Wallet helper
@@ -63,19 +63,24 @@ function getScriptAddress(compiled: string) {
 // Factory scripts
 // ------------------------------------------------------------
 
-function getFactoryScriptDetails(ownerPkh: string) {
-  const factoryScript = applyParamsToScript(
-    getValidator('factory.'),
-    [builtinByteString(ownerPkh)],
-    'JSON',
-  );
+function getFactoryScriptDetails(ownerPkh: string,seedUtxo: UTxO) {
+
 
   const factoryMarkerScript = applyParamsToScript(
-    getValidator('factory_marker'),
-    [builtinByteString(ownerPkh)],
+    getValidator('factory_marker.'),
+    [builtinByteString(ownerPkh),
+      outputReference(seedUtxo.input.txHash!, seedUtxo.input.outputIndex!)
+    ],
     'JSON',
   );
 
+  const factoryScript = applyParamsToScript(
+    getValidator('factory.'),
+    [builtinByteString(ownerPkh),
+      scriptHash(resolveScriptHash(factoryMarkerScript, 'V3'))
+    ],
+    'JSON',
+  );
   return {
     factory: {
       script: factoryScript,
@@ -131,7 +136,7 @@ export async function createFactory(walletFile: string) {
   const collateral = await wallet.getCollateral();
   const seedUtxo = utxos[0]; // one-shot seed
 
-  const factory = getFactoryScriptDetails(ownerPkh);
+  const factory = getFactoryScriptDetails(ownerPkh, seedUtxo);
 
   const tx = new MeshTxBuilder({
     fetcher: provider,
@@ -149,9 +154,9 @@ export async function createFactory(walletFile: string) {
 
     // Mint FACTORY_MARKER
     .mintPlutusScriptV3()
-    .mint('1', factory.factoryMarker.policyId, FACTORY_MARKER_NAME)
+    .mint('1', factory.factoryMarker.policyId, FACTORY_MARKER_NAME_HEX)
     .mintingScript(factory.factoryMarker.script)
-    .mintRedeemerValue(mConStr0([]))
+    .mintRedeemerValue("")
 
     // Lock marker at factory script
     .txOut(
@@ -159,15 +164,14 @@ export async function createFactory(walletFile: string) {
       [
         {
           unit:
-            factory.factoryMarker.policyId + FACTORY_MARKER_NAME,
+            factory.factoryMarker.policyId + FACTORY_MARKER_NAME_HEX,
           quantity: '1',
         },
       ],
     )
     .txOutInlineDatumValue(
-      mConStr0
-
-    ) // FactoryDatum { products = [] }
+      mConStr0(([[]]))
+    )
 
     // Signer & collateral
     .requiredSignerHash(ownerPkh)

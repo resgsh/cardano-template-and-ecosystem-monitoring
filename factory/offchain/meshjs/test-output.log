@@ -1,4 +1,23 @@
-factory\offchain\meshjs> deno run -A factory.ts create-product wallet_0.json firefly-002 organic-honey                      
+PS D:\Workspace\Ideaspace\cardano-template-and-ecosystem-monitoring\factory\offchain\meshjs> deno run -A factory.ts create-factory wallet_0.json
+Factory created
+Owner PKH: 332353c1231a76c19a9a7d44ef4252759e5feba6c9bb13a4c38ae712
+Factory address: addr_test1wpv8g98hqh9c2hkd8cyuw7pgqzhr9h3gapthv7m8sz0a5lq6lun5m
+Factory marker policy: 1889b1934b976b46e33a4d07099e08715a4a4f8850ed369f483b665a
+Tx hash: 40f3b6078496a9aa8c86bf50e1605c58da080f00ed4b98f4068fdd763c3f3dc9
+PS D:\Workspace\Ideaspace\cardano-template-and-ecosystem-monitoring\factory\offchain\meshjs>
+
+
+
+
+
+
+
+
+
+
+OLD
+
+factory\offchain\meshjs> deno run -A factory.ts create-product wallet_0.json firefly-002 organic-honey
 ownerPkh:  72b46a9927fd32da5c2f11365b6f20f9af930e63974e4f8935064215
 Product contract created
 Owner PKH: 72b46a9927fd32da5c2f11365b6f20f9af930e63974e4f8935064215
