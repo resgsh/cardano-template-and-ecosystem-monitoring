@@ -63,7 +63,7 @@ function getScriptAddress(compiled: string) {
 // Factory scripts
 // ------------------------------------------------------------
 
-function getFactoryScriptDetails(ownerPkh: string,seedUtxo: UTxO) {
+function getFactoryMarkerAndScriptDetails(ownerPkh: string,seedUtxo: UTxO) {
 
 
   const factoryMarkerScript = applyParamsToScript(
@@ -90,6 +90,23 @@ function getFactoryScriptDetails(ownerPkh: string,seedUtxo: UTxO) {
     factoryMarker: {
       script: factoryMarkerScript,
       policyId: resolveScriptHash(factoryMarkerScript, 'V3'),
+    },
+  };
+}
+function getFactoryScriptDetails(ownerPkh: string,markerPolicyId: string) {
+
+  const factoryScript = applyParamsToScript(
+    getValidator('factory.'),
+    [builtinByteString(ownerPkh),
+      scriptHash(markerPolicyId)
+    ],
+    'JSON',
+  );
+  return {
+    factory: {
+      script: factoryScript,
+      scriptHash: resolveScriptHash(factoryScript, 'V3'),
+      address: getScriptAddress(factoryScript),
     },
   };
 }
@@ -136,7 +153,7 @@ export async function createFactory(walletFile: string) {
   const collateral = await wallet.getCollateral();
   const seedUtxo = utxos[0]; // one-shot seed
 
-  const factory = getFactoryScriptDetails(ownerPkh, seedUtxo);
+  const factory = getFactoryMarkerAndScriptDetails(ownerPkh, seedUtxo);
 
   const tx = new MeshTxBuilder({
     fetcher: provider,
@@ -343,13 +360,13 @@ export async function getTag(
   return hexToString(datum.fields[0].bytes);
 }
 
-export function getFactory(ownerPkh: string) {
-  const factory = getFactoryScriptDetails(ownerPkh);
-  return {
-    ownerPkh,
-    factoryAddress: factory.factory.address,
-    factoryMarkerPolicyId: factory.factoryMarker.policyId,
-  };
+export async function getFactory(walletFile: string,markerPolicyId: string) {
+  const wallet = loadWalletFromFile(walletFile);
+  const provider = new KoiosProvider(NETWORK);
+
+  const changeAddr = await wallet.getChangeAddress();
+  const ownerPkh = resolvePaymentKeyHash(changeAddr);
+  return getFactoryScriptDetails(ownerPkh, markerPolicyId);
 }
 
 // ------------------------------------------------------------
@@ -401,12 +418,12 @@ if (import.meta.main) {
     }
 
     case 'get-factory': {
-      if (args.length !== 1) {
-        console.log('Usage: get-factory <owner_pkh>');
+      if (args.length !== 2) {
+        console.log('Usage: get-factory <wallet.json> <marker_policy_id>');
         Deno.exit(1);
       }
-      const [ownerPkh] = args;
-      console.log(getFactory(ownerPkh));
+      const [ownerPkh,markerPolicyId] = args;
+      console.log(await getFactory(ownerPkh,markerPolicyId));
       break;
     }
 

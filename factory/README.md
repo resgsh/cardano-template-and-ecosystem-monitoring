@@ -302,3 +302,4 @@ It has not been audited and should not be used with real funds without proper re
 Updated commands
 
 deno run -A factory.ts create-factory wallet_0.json
+deno run -A factory.ts get-factory wallet_0.json 1889b1934b976b46e33a4d07099e08715a4a4f8850ed369f483b665a
